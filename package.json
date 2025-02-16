@@ -1,0 +1,73 @@
+{
+  "name": "@jpowersdev/jsonschema-gen",
+  "version": "0.0.1",
+  "description": "Generate Effect schemas from JSON Schema",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jpowersdev/jsonschema-gen.git"
+  },
+  "license": "MIT",
+  "author": "Jon Powers <jon@jpowers.dev>",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm build:ts && pnpm copy-package-json",
+    "build:ts": "tsup",
+    "check": "tsc -b tsconfig.json",
+    "clean": "rm -rf dist/*",
+    "copy-package-json": "tsx scripts/copy-package-json.ts",
+    "coverage": "vitest --coverage",
+    "release": "pnpm build && TEST_DIST= pnpm vitest && changeset publish",
+    "test": "vitest",
+    "version": "changeset version && node scripts/version.mjs"
+  },
+  "dependencies": {
+    "@effect/cli": "^0.56.1",
+    "@effect/eslint-plugin": "^0.3.0",
+    "@effect/platform": "^0.77.1",
+    "@effect/platform-node": "^0.73.1",
+    "@eslint/compat": "1.2.6",
+    "@eslint/eslintrc": "3.2.0",
+    "@eslint/js": "9.20.0",
+    "@jpowersdev/jsonschema-gen": "link:dist",
+    "@typescript-eslint/eslint-plugin": "^8.24.0",
+    "@typescript-eslint/parser": "^8.24.0",
+    "effect": "^3.13.1",
+    "eslint": "^9.20.1",
+    "eslint-import-resolver-typescript": "^3.8.0",
+    "eslint-plugin-codegen": "^0.29.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-sort-destructure-keys": "^2.0.0"
+  },
+  "devDependencies": {
+    "@effect/build-utils": "^0.7.9",
+    "@effect/docgen": "^0.5.2",
+    "@effect/dtslint": "^0.1.2",
+    "@effect/language-service": "^0.2.0",
+    "@effect/vitest": "^0.18.1",
+    "@types/node": "^22.13.4",
+    "@vitest/coverage-v8": "3.0.5",
+    "prettier": "^3.5.1",
+    "tsup": "^8.3.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  },
+  "packageManager": "pnpm@9.10.0",
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
+  "effect": {
+    "generateExports": {
+      "include": [
+        "**/*.ts"
+      ]
+    },
+    "generateIndex": {
+      "include": [
+        "**/*.ts"
+      ]
+    }
+  }
+}
