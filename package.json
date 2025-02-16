@@ -58,17 +58,5 @@
   "publishConfig": {
     "access": "public",
     "directory": "dist"
-  },
-  "effect": {
-    "generateExports": {
-      "include": [
-        "**/*.ts"
-      ]
-    },
-    "generateIndex": {
-      "include": [
-        "**/*.ts"
-      ]
-    }
   }
 }
