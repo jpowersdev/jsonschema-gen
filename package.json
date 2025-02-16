@@ -12,13 +12,13 @@
   "scripts": {
     "build": "pnpm build:ts && pnpm copy-package-json",
     "build:ts": "tsup",
-    "changeset-release": "pnpm build && TEST_DIST= pnpm vitest && changeset publish",
-    "changeset-version": "changeset version",
     "check": "tsc -b tsconfig.json",
     "clean": "rm -rf dist/*",
     "copy-package-json": "tsx scripts/copy-package-json.ts",
     "coverage": "vitest --coverage",
-    "test": "vitest"
+    "release": "pnpm build && TEST_DIST= pnpm vitest && changeset publish",
+    "test": "vitest",
+    "version": "changeset version"
   },
   "dependencies": {
     "@effect/cli": "^0.56.1",
