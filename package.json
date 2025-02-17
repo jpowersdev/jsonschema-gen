@@ -16,7 +16,7 @@
     "clean": "rm -rf dist/*",
     "copy-package-json": "tsx scripts/copy-package-json.ts",
     "coverage": "vitest --coverage",
-    "release": "pnpm build && TEST_DIST= pnpm vitest && changeset publish",
+    "release": "pnpm build && TEST_DIST= pnpm test && changeset publish",
     "test": "vitest",
     "version": "changeset version"
   },

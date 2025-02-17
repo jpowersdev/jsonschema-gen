@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
 import * as fs from "fs"
 import * as path from "path"
 import { JsonSchemaGen } from "../src/JsonSchemaGen.js"
@@ -81,9 +82,9 @@ describe("JsonSchemaGen", () => {
       Effect.gen(function*() {
         const gen = yield* JsonSchemaGen
         const result = yield* gen.generateSchemas(schema, {
-          prefix: "",
-          reservedPrefix: "MCP",
-          satisfiesPath: "jsonschema"
+          prefix: Option.none(),
+          reservedPrefix: Option.some("MCP"),
+          satisfiesPath: Option.some("jsonschema")
         })
 
         // Verify basic structure
@@ -96,7 +97,9 @@ describe("JsonSchemaGen", () => {
         expect(result).toContain("export const ServerRequest =")
 
         // Test that generated types satisfy the interfaces
-        expect(result).toContain("satisfies Schema.Schema<any, S.jsonschema>")
+        expect(result).toContain("satisfies Schema.Schema<any, S.JSONRPCMessage>")
+        expect(result).toContain("satisfies Schema.Schema<any, S.ClientRequest>")
+        expect(result).toContain("satisfies Schema.Schema<any, S.ServerRequest>")
 
         // Test that reserved words are prefixed
         expect(result).toContain("export const MCPResource = Schema.Struct({")
@@ -153,7 +156,9 @@ describe("JsonSchemaGen", () => {
       Effect.gen(function*() {
         const gen = yield* JsonSchemaGen
         const result = yield* gen.generateSchemas(schema, {
-          prefix: "MCP"
+          prefix: Option.some("MCP"),
+          reservedPrefix: Option.none(),
+          satisfiesPath: Option.none()
         })
 
         expect(result).toContain("export const MCPResource = Schema.Struct({")

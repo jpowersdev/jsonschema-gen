@@ -56,17 +56,17 @@ export class JsonSchemaGen extends Effect.Service<JsonSchemaGen>()(
         name: string,
         config: JsonSchemaConfig = defaultConfig
       ): string => {
-        const { prefix = Option.none, reservedPrefix = Option.some("Schema") } = config
-
         // Always apply the general prefix if specified
-        let formattedName = prefix + name
-
-        // Check if the name is reserved
-        if (RESERVED_WORDS.has(formattedName)) {
-          formattedName = reservedPrefix + formattedName
-        }
-
-        return formattedName
+        return Option.match(config.prefix, {
+          onSome: (p) => p + name,
+          onNone: () => {
+            const reservedPrefix = Option.getOrElse(config.reservedPrefix, () => "Schema")
+            if (RESERVED_WORDS.has(name)) {
+              return reservedPrefix + name
+            }
+            return name
+          }
+        })
       }
 
       const processDefinition = (
