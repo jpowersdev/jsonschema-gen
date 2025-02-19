@@ -102,7 +102,60 @@ export class JsonSchemaGen extends Effect.Service<JsonSchemaGen>()(
         }
       }
 
-      // Update buildSchema to handle references with formatName
+      // Add a function to get dependencies for a definition
+      const getDependencies = (
+        def: JsonSchemaDefinition,
+        config: JsonSchemaConfig = defaultConfig
+      ): Array<string> => {
+        const deps: Array<string> = []
+
+        if (def.$ref) {
+          const refName = def.$ref.split("/").pop()!
+          deps.push(formatName(refName, config))
+        }
+
+        if (def.properties) {
+          for (const propDef of Object.values(def.properties)) {
+            getDependencies(propDef as JsonSchemaDefinition, config).forEach((dep) => deps.push(dep))
+          }
+        }
+
+        if (def.items) {
+          if (Array.isArray(def.items)) {
+            for (const item of def.items) {
+              getDependencies(item, config).forEach((dep) => deps.push(dep))
+            }
+          } else {
+            getDependencies(def.items, config).forEach((dep) => deps.push(dep))
+          }
+        }
+
+        if (def.additionalProperties && typeof def.additionalProperties === "object") {
+          getDependencies(def.additionalProperties as JsonSchemaDefinition, config).forEach((dep) => deps.push(dep))
+        }
+
+        if (def.oneOf) {
+          for (const schema of def.oneOf) {
+            getDependencies(schema, config).forEach((dep) => deps.push(dep))
+          }
+        }
+
+        if (def.anyOf) {
+          for (const schema of def.anyOf) {
+            getDependencies(schema, config).forEach((dep) => deps.push(dep))
+          }
+        }
+
+        if (def.allOf) {
+          for (const schema of def.allOf) {
+            getDependencies(schema, config).forEach((dep) => deps.push(dep))
+          }
+        }
+
+        return Array.fromIterable(new Set(deps))
+      }
+
+      // Update buildSchema to handle references directly
       const buildSchema = (
         def: JsonSchemaDefinition,
         config: JsonSchemaConfig = defaultConfig
@@ -110,8 +163,7 @@ export class JsonSchemaGen extends Effect.Service<JsonSchemaGen>()(
         Effect.gen(function*() {
           if (def.$ref) {
             const refName = def.$ref.split("/").pop()!
-            const formattedRefName = formatName(refName, config)
-            return `Schema.suspend(() => ${formattedRefName})`
+            return formatName(refName, config)
           }
 
           if (def.enum) {
@@ -155,7 +207,7 @@ export class JsonSchemaGen extends Effect.Service<JsonSchemaGen>()(
                   `${propName}: ${
                     isRequired
                       ? propSchema
-                      : `Schema.optionalWith(${propSchema}, { as: "Option" })`
+                      : `Schema.optionalWith(${propSchema}, { as: "Option", exact: true })`
                   }`
                 )
               }
@@ -239,7 +291,7 @@ export class JsonSchemaGen extends Effect.Service<JsonSchemaGen>()(
           return resultOutput
         })
 
-      // Update generateSchemas to accept config
+      // Update generateSchemas to order definitions
       const generateSchemas = (
         schema: Record<string, any>,
         config: JsonSchemaConfig = defaultConfig
@@ -258,14 +310,44 @@ export class JsonSchemaGen extends Effect.Service<JsonSchemaGen>()(
             import * as Schema from "effect/Schema"${satisfiesPath}`
           ]
 
-          // Process each definition with config
+          // Build dependency graph
+          const dependencies = new Map<string, Array<string>>()
           for (const [name, def] of Object.entries(definitions)) {
-            const schemaCode = yield* processDefinition(
-              name,
-              def as JsonSchemaDefinition,
-              config
-            )
-            output.push(schemaCode)
+            const formattedName = formatName(name, config)
+            dependencies.set(formattedName, getDependencies(def as JsonSchemaDefinition, config))
+          }
+
+          // Order definitions based on dependencies
+          const processed = new Set<string>()
+          const ordered: Array<string> = []
+
+          const processDef = (name: string) => {
+            if (processed.has(name)) return
+            const deps = dependencies.get(name) || []
+            for (const dep of deps) {
+              processDef(dep)
+            }
+            processed.add(name)
+            ordered.push(name)
+          }
+
+          for (const name of dependencies.keys()) {
+            processDef(name)
+          }
+
+          // Process definitions in order
+          for (const formattedName of ordered) {
+            const originalName = Array.fromIterable(Object.entries(definitions)).find(
+              ([name]) => formatName(name, config) === formattedName
+            )?.[0]
+            if (originalName) {
+              const schemaCode = yield* processDefinition(
+                originalName,
+                definitions[originalName] as JsonSchemaDefinition,
+                config
+              )
+              output.push(schemaCode)
+            }
           }
 
           const result = output.join("\n\n")
