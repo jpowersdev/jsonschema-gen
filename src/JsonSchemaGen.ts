@@ -114,6 +114,10 @@ export class JsonSchemaGen extends Effect.Service<JsonSchemaGen>()(
           deps.push(formatName(refName, config))
         }
 
+        if (def.const) {
+          deps.push(formatName(def.const, config))
+        }
+
         if (def.properties) {
           for (const propDef of Object.values(def.properties)) {
             getDependencies(propDef as JsonSchemaDefinition, config).forEach((dep) => deps.push(dep))
@@ -252,7 +256,7 @@ export class JsonSchemaGen extends Effect.Service<JsonSchemaGen>()(
 
           if (def.const) {
             const value = JSON.stringify(def.const)
-            return `Schema.Literal(${value}).pipe(Schema.propertySignature, Schema.withConstructorDefault(() => ${value} as const))`
+            return `Schema.Literal(${value})`
           }
 
           return handlePrimitive(def.type)
