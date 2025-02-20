@@ -5,6 +5,7 @@ import * as Console from "effect/Console"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import { ESLint } from "eslint"
 import { RESERVED_WORDS } from "./constants.js"
@@ -72,18 +73,55 @@ export class JsonSchemaGen extends Effect.Service<JsonSchemaGen>()(
       const processDefinition = (
         name: string,
         def: JsonSchemaDefinition,
-        config: JsonSchemaConfig = defaultConfig
+        config: JsonSchemaConfig = defaultConfig,
+        isRoot: boolean = true
       ): Effect.Effect<string, GenerationError> =>
         Effect.gen(function*() {
           const formattedName = formatName(name, config)
-          const schema = yield* buildSchema(def, config)
 
+          if (def.type === "object" && Predicate.hasProperty(def, "properties") && isRoot) {
+            return yield* buildClassSchema(formattedName, def as any, config)
+          }
+
+          const schema = yield* buildSchema(def, config)
           const satisfies = Option.match(config.satisfiesPath, {
             onSome: () => ` satisfies Schema.Schema<any, S.${name}>`,
             onNone: () => ""
           })
 
-          return `export const ${formattedName} = ${schema}${satisfies}\nexport type ${formattedName} = typeof ${formattedName}.Type`
+          return `
+            export const ${formattedName} = ${schema}${satisfies}
+            export type ${formattedName} = typeof ${formattedName}.Type
+          `
+        })
+
+      const buildClassSchema = (
+        name: string,
+        def: JsonSchemaDefinition & { properties: NonNullable<JsonSchemaDefinition["properties"]> },
+        config: JsonSchemaConfig = defaultConfig
+      ): Effect.Effect<string, GenerationError> =>
+        Effect.gen(function*() {
+          const props: Array<string> = []
+          for (
+            const [propName, propDef] of Object.entries(
+              def.properties
+            )
+          ) {
+            const propSchema = yield* buildSchema(
+              propDef as JsonSchemaDefinition,
+              config
+            )
+            const isRequired = def.required?.includes(propName) ?? false
+            props.push(
+              `${propName}: ${
+                isRequired
+                  ? propSchema
+                  : `Schema.optionalWith(${propSchema}, { as: "Option", exact: true })`
+              }`
+            )
+          }
+
+          return `export class ${name} extends Schema.Class<${name}>("${name}")({${props.join(",\n")}}) {}`
         })
 
       const handlePrimitive = (type?: string | Array<string>): string => {
@@ -218,9 +256,7 @@ export class JsonSchemaGen extends Effect.Service<JsonSchemaGen>()(
               if (props.length === 0) {
                 return `Schema.Object`
               }
-              return `Schema.Struct({
-          ${props.join(",\n        ")}
-        })`
+              return `Schema.Struct({\n${props.join(",\n")}})`
             }
             if (
               def.additionalProperties &&
